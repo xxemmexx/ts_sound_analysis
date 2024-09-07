@@ -15,7 +15,7 @@ indices_df |>
   ggplot(aes(x = location, y = ADI, color = year)) +
   geom_boxplot() +
   ggtitle("Boxplots for habitat F3") +
-  xlab("Arbitrary index") + ylab("Acoustic diversity index (ADI)")
+  xlab("Survey station") + ylab("Acoustic diversity index (ADI)")
 
 
 ggsave('results/boxplots_F3.png')  
