@@ -17,6 +17,16 @@ indices_df |>
   ggtitle("Boxplots for habitat F3") +
   xlab("Survey station") + ylab("Acoustic diversity index (ADI)")
 
+ggsave('results/boxplot_ADI_F3_stations.png')  
 
-ggsave('results/boxplots_F3.png')  
+indices_df |>
+  mutate(location = stringr::str_sub(loc_code, start = 2),
+         index = 1) |>
+  ggplot(aes(x = location, y = ACI, color = year)) +
+  geom_boxplot() +
+  ggtitle("Boxplots for habitat F3") +
+  xlab("Survey station") + ylab("Acoustic complexity index (ACI)")
+
+
+ggsave('results/boxplot_ACI_F3_stations.png')  
 

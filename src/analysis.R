@@ -2,9 +2,10 @@
 require(tuneR)
 require(soundecology)
 require(seewave)
+require(usethis)
 
 # Globals ----------------------------------------------------------------------
-input_folder <- "data/raw"
+input_folder <- "data/interim"
 output_folder <- "data/processed"
 
 
