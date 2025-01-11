@@ -14,19 +14,19 @@ indices_df |>
          index = 1) |>
   ggplot(aes(x = location, y = ADI, color = year)) +
   geom_boxplot() +
-  ggtitle("Boxplots for habitat F3") +
+  ggtitle(paste("Boxplots for habitat", stringr::str_sub(indices_df$loc_code, end = 2))) +
   xlab("Survey station") + ylab("Acoustic diversity index (ADI)")
 
-ggsave('results/boxplot_ADI_F3_stations.png')  
+ggsave('results/boxplot_ADI.png')  
 
 indices_df |>
   mutate(location = stringr::str_sub(loc_code, start = 2),
          index = 1) |>
   ggplot(aes(x = location, y = ACI, color = year)) +
   geom_boxplot() +
-  ggtitle("Boxplots for habitat F3") +
+  ggtitle(paste("Boxplots for habitat", stringr::str_sub(indices_df$loc_code, end = 2))) +
   xlab("Survey station") + ylab("Acoustic complexity index (ACI)")
 
 
-ggsave('results/boxplot_ACI_F3_stations.png')  
+ggsave('results/boxplot_ACI.png')  
 
