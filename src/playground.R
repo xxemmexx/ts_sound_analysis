@@ -32,7 +32,7 @@ totalFiles <- nrow(times)
 
 
 
-list.files(input_folder, full.names = TRUE)
+sample_file <- list.files(input_folder, full.names = TRUE)[[1]]
 
 
 system.time(
@@ -46,26 +46,24 @@ with(future::plan(multisession, workers = 3), {
 })
 )
 
+one_minute_file <- list.files('data/interim/minute_files', full.names = TRUE)[[1]]
 
+audio_file <- tuneR::readWave(one_minute_file)
 
+testAR <- seewave::AR('data/interim/minute_files/', datatype="files")
 
-for(i in 1:totalFiles) {
-  
-  print(noquote(paste0("Exporting one-minute file: ", i, "/", totalFiles)))
-  
-  tuneR::readWave(aPathToFile, 
-                  from = times$start_time[[i]], 
-                  to = times$end_time[[i]],
-                  units = "seconds"
-  ) |>
-    tuneR::writeWave(paste0(outputFolder, 
-                            paste0('audio_secs_', 
-                                   times$start_time[[i]], 
-                                   '-', 
-                                   times$end_time[[i]], 
-                                   '.wav'))
-    )
-}
+system.time(
+testVec <- purrr::map_dbl(one_minute_files, \(x) computeNDSI(x))
+)
+
+testVec |> median(na.rm = TRUE)
+
+system.time(
+  with(future::plan(multisession, workers = 3), {
+    testVecFurrr <- furrr::future_map_dbl(one_minute_files, \(x) computeNDSI(x))
+  })
+)
+
 
 # Acoustic indices -------------------------------------------------------------
 input_folder <- "data/raw/recordings/"
@@ -83,10 +81,9 @@ sample_one_min_sound_file <- tuneR::readWave(sample_file,
 
 
 
-# test <- seewave::soundscapespec(sample_one_min_sound_file, plot = FALSE) |>
-#   seewave::NDSI(max = TRUE)
-# 
-# 
+
+
+
 bands <- meanspec(sample_one_min_sound_file, f=8000, plot=FALSE) |>
   seewave::fbands()
 

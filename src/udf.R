@@ -48,7 +48,7 @@ generateOneMinFilesFromLongRecording <- function(aPathToFile, outputFolder = "da
     dplyr::mutate(end_time = ifelse(is.na(end_time), Inf, end_time))
   
   
-  print(noquote(paste0("File: ", aPathToFile, ' will be split')))
+  print(noquote(paste0("File ", basename(aPathToFile), ' is being split...')))
   
   with(future::plan(multisession, workers = 3), {
     
@@ -91,14 +91,39 @@ computeMedianAcousticIndices <- function(inputDir = "data/interim/minute_files/"
     summary <- one_min_files_values |>
       dplyr::summarise(median_value = median(LEFT_CHANNEL, na.rm = TRUE))
     
-    idx_values[acoustic_index] <- summary$median_value
+    idx_values[acoustic_index] <- summary$median_value |> round(digits = 2)
     
   }
   
-  print(noquote("All indices have been computed..."))
-  
   idx_values |> 
     tibble::as_tibble_row()
+}
+
+computeNDSI <- function(aPathToFile) {
+  
+  tuneR::readWave(aPathToFile) |>
+    seewave::soundscapespec(plot = FALSE) |>
+    seewave::NDSI(max = TRUE)
+}
+
+computeMedianNDSI <- function(inputDir = "data/interim/minute_files/") {
+  
+  one_minute_files <- list.files(inputDir, full.names = TRUE)
+  
+  print(noquote(paste0("Computing NDSI of ", length(one_minute_files), " input files using 3 cores")))
+  
+  with(future::plan(multisession, workers = 3), {
+    
+    ndsi_values <- furrr::future_map_dbl(one_minute_files, \(x) computeNDSI(x))
+    
+  })
+  
+  medianNDSI <- ndsi_values |>
+    median(na.rm = TRUE) |>
+    round(digits = 2)
+  
+  tibble::tibble(ndsi = medianNDSI)
+    
 }
 
 generateSummaryFromRecordings <- function(inputDir) {
@@ -110,10 +135,14 @@ generateSummaryFromRecordings <- function(inputDir) {
     generateOneMinFilesFromLongRecording(paste0(inputDir, filename))
     
     medianAcousticIndices <- computeMedianAcousticIndices()
+    medianNDSI <- computeMedianNDSI()
+    
+    print(noquote(paste0("All indices have been computed for file ", filename)))
     
     summaryAcousticIndices <- filename |> 
       getFileInfoTibble() |>
-      dplyr::bind_cols(medianAcousticIndices)
+      dplyr::bind_cols(medianAcousticIndices) |>
+      dplyr::bind_cols(medianNDSI)
     
     summaryAllFiles <- summaryAllFiles |>
       dplyr::bind_rows(summaryAcousticIndices)
@@ -140,5 +169,5 @@ cleanUpInterimFiles <- function() {
   remInterim <- lapply(interim_one_min_files, file.remove) 
   remIndices <- lapply(single_file_indices, file.remove) 
   
-  print(noquote("Intermediate outputs have been removed..."))
+  print(noquote("Intermediate outputs have been removed"))
 }
