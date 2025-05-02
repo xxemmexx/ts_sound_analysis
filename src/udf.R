@@ -3,7 +3,10 @@ getDummyTibble <- function() {
 }
 
 getFileInfoTibble <- function(aFilename) {
-  filenameComponents <- stringr::str_split(aFilename, pattern = "_")
+  
+  filenameComponents <- aFilename |>
+    tools::file_path_sans_ext() |>
+    str_split(pattern = "_")
   
   tibble::tibble(file = aFilename,
                  location = filenameComponents[[1]][[1]],
@@ -20,9 +23,23 @@ getVectorOfStartTimes <- function(aPathToFile) {
   return((0:(floor(audioDuration/60)-1))*60)
 }
 
-generateOneMinFilesFromLongRecording <- function(aPathToFile, outputFolder = "data/interim/minute_files/") {
+exportAudioExtract <- function(fromTime, toTime, aPathToFile, outputDir = "data/interim/minute_files/") {
   
-  print(noquote(paste0("Inferring number of one-minute files in ", aPathToFile)))
+  tuneR::readWave(aPathToFile, 
+                  from = fromTime, 
+                  to = toTime,
+                  units = "seconds"
+  ) |>
+    tuneR::writeWave(paste0(outputDir, 
+                            paste0('audio_secs_', 
+                                   fromTime, 
+                                   '-', 
+                                   toTime, 
+                                   '.wav'))
+    )
+}
+
+generateOneMinFilesFromLongRecording <- function(aPathToFile, outputFolder = "data/interim/minute_files/") {
   
   times <- dplyr::tibble(
     start_time = getVectorOfStartTimes(aPathToFile)
@@ -30,25 +47,18 @@ generateOneMinFilesFromLongRecording <- function(aPathToFile, outputFolder = "da
     dplyr::mutate(end_time = lead(start_time)) |>
     dplyr::mutate(end_time = ifelse(is.na(end_time), Inf, end_time))
   
-  totalFiles <- nrow(times)
   
-  for(i in 1:totalFiles) {
+  print(noquote(paste0("File: ", aPathToFile, ' will be split')))
+  
+  with(future::plan(multisession, workers = 3), {
     
-    print(noquote(paste0("Exporting one-minute file: ", i, "/", totalFiles)))
-    
-    tuneR::readWave(aPathToFile, 
-                    from = times$start_time[[i]], 
-                    to = times$end_time[[i]],
-                    units = "seconds"
-    ) |>
-      tuneR::writeWave(paste0(outputFolder, 
-                              paste0('audio_secs_', 
-                                     times$start_time[[i]], 
-                                     '-', 
-                                     times$end_time[[i]], 
-                                     '.wav'))
-      )
-  }
+    furrr::future_map2(times$start_time, 
+                       times$end_time, 
+                       \(x, y) exportAudioExtract(x, y, aPathToFile = aPathToFile)
+                       )
+  })
+  
+  print(noquote(paste0(nrow(times), ' one-minute files have been created')))
   
 }
 
@@ -85,7 +95,7 @@ computeMedianAcousticIndices <- function(inputDir = "data/interim/minute_files/"
     
   }
   
-  print(noquote("Done!"))
+  print(noquote("All indices have been computed..."))
   
   idx_values |> 
     tibble::as_tibble_row()
@@ -109,6 +119,26 @@ generateSummaryFromRecordings <- function(inputDir) {
       dplyr::bind_rows(summaryAcousticIndices)
   }
   
+  cleanUpInterimFiles()
+  
+  print(noquote("Done!"))
+  
   summaryAllFiles |>
     dplyr::filter(file != 'sample') 
+}
+
+cleanUpInterimFiles <- function() {
+  
+  interim_one_min_files <- list.files('data/interim/minute_files',
+                                      pattern = "\\.[Ww][Aa][Vv]$",
+                                      full.names = TRUE)
+  
+  single_file_indices <- list.files('data/interim/',
+                                    pattern = "\\.[c][s][v]$",
+                                    full.names = TRUE)
+  
+  remInterim <- lapply(interim_one_min_files, file.remove) 
+  remIndices <- lapply(single_file_indices, file.remove) 
+  
+  print(noquote("Intermediate outputs have been removed..."))
 }

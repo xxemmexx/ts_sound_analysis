@@ -3,6 +3,9 @@ require(tuneR)
 require(soundecology)
 require(dplyr)
 require(stringr)
+require(purrr)
+require(furrr)
+require(future)
 
 source('src/udf.R')
 
@@ -15,5 +18,3 @@ output_filename <- "data/processed/acoustic_indices.csv"
 
 generateSummaryFromRecordings(input_raw_recording) |>
   readr::write_csv(output_filename)
- 
-print(noquote("Thx!"))
