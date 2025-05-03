@@ -54,7 +54,8 @@ generateOneMinFilesFromLongRecording <- function(aPathToFile, outputFolder = "da
     
     furrr::future_map2(times$start_time, 
                        times$end_time, 
-                       \(x, y) exportAudioExtract(x, y, aPathToFile = aPathToFile)
+                       \(x, y) exportAudioExtract(x, y, aPathToFile = aPathToFile),
+                       .progress = TRUE
                        )
   })
   
@@ -101,9 +102,20 @@ computeMedianAcousticIndices <- function(inputDir = "data/interim/minute_files/"
 
 computeNDSI <- function(aPathToFile) {
   
-  tuneR::readWave(aPathToFile) |>
-    seewave::soundscapespec(plot = FALSE) |>
-    seewave::NDSI(max = TRUE)
+  soundscape <- tuneR::readWave(aPathToFile) |>
+    seewave::soundscapespec(plot = FALSE)
+  
+  ndsi_value_result <- tryCatch({
+    
+    seewave::NDSI(soundscape, max = TRUE)
+    
+  }, error = function(e) {
+    
+    NA
+    
+  })
+  
+  ndsi_value_result
 }
 
 computeMedianNDSI <- function(inputDir = "data/interim/minute_files/") {
@@ -114,7 +126,8 @@ computeMedianNDSI <- function(inputDir = "data/interim/minute_files/") {
   
   with(future::plan(multisession, workers = 3), {
     
-    ndsi_values <- furrr::future_map_dbl(one_minute_files, \(x) computeNDSI(x))
+    ndsi_values <- furrr::future_map_dbl(one_minute_files, 
+                                         \(x) computeNDSI(x))
     
   })
   
