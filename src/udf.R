@@ -16,51 +16,103 @@ getFileInfoTibble <- function(aFilename) {
                  )
 }
 
+isReadableFile <- function(aPathToFile) {
+  tryCatch({
+    
+    waveFile <- tuneR::readWave(aPathToFile, header=TRUE)
+    
+    return(TRUE)
+    
+  }, error = function(e) {
+    
+    FALSE
+    
+  })
+}
+
 getVectorOfStartTimes <- function(aPathToFile) {
-  audio <- tuneR::readWave(aPathToFile, header=TRUE)
-  audioDuration <- round(audio$samples / audio$sample.rate, 2)
   
-  return((0:(floor(audioDuration/60)-1))*60)
+  audio <- tryCatch({
+    
+    av::av_media_info(aPathToFile)
+    
+  }, error = function(e) {
+    
+    NULL
+    
+  })
+  
+  if(is.null(audio)) {
+    
+    return(NULL)
+    
+  }
+  else {
+    
+    return((0:(floor(audio$duration/60)-1))*60)
+    
+  }
 }
 
 exportAudioExtract <- function(fromTime, toTime, aPathToFile, outputDir = "data/interim/minute_files/") {
   
-  tuneR::readWave(aPathToFile, 
-                  from = fromTime, 
-                  to = toTime,
-                  units = "seconds"
-  ) |>
-    tuneR::writeWave(paste0(outputDir, 
-                            paste0('audio_secs_', 
-                                   fromTime, 
-                                   '-', 
-                                   toTime, 
-                                   '.wav'))
-    )
+  tryCatch({
+    
+    tuneR::readWave(aPathToFile, 
+                    from = fromTime, 
+                    to = toTime,
+                    units = "seconds"
+                    ) |>
+      tuneR::writeWave(paste0(outputDir, 
+                              paste0('audio_secs_', 
+                                     fromTime, 
+                                     '-', 
+                                     toTime, 
+                                     '.wav'))
+      )
+    
+  }, error = function(e) {
+    
+    print(paste0('Skipping 1 one-minute file from ', basename(aPathToFile)))
+    
+  })
 }
 
 generateOneMinFilesFromLongRecording <- function(aPathToFile, outputFolder = "data/interim/minute_files/") {
   
-  times <- dplyr::tibble(
-    start_time = getVectorOfStartTimes(aPathToFile)
-    ) |>
-    dplyr::mutate(end_time = lead(start_time)) |>
-    dplyr::mutate(end_time = ifelse(is.na(end_time), Inf, end_time))
+  startTimes <- getVectorOfStartTimes(aPathToFile)
   
-  
-  print(noquote(paste0("File ", basename(aPathToFile), ' is being split...')))
-  
-  with(future::plan(multisession, workers = 3), {
+  if(is.null(startTimes) | !isReadableFile(aPathToFile)) {
     
-    furrr::future_map2(times$start_time, 
-                       times$end_time, 
-                       \(x, y) exportAudioExtract(x, y, aPathToFile = aPathToFile),
-                       .progress = TRUE
-                       )
-  })
-  
-  print(noquote(paste0(nrow(times), ' one-minute files have been created')))
-  
+    print(noquote(paste0("File ", basename(aPathToFile), ' could not be read. Skipping...')))
+    
+    return(NULL)
+    
+  }
+  else {
+    
+    times <- dplyr::tibble(
+      start_time = startTimes
+    ) |>
+      dplyr::mutate(end_time = lead(start_time)) |>
+      dplyr::mutate(end_time = ifelse(is.na(end_time), Inf, end_time))
+    
+    
+    print(noquote(paste0("File ", basename(aPathToFile), ' is being split...')))
+    
+    with(future::plan(multisession, workers = 3), {
+      
+      furrr::future_map2(times$start_time, 
+                         times$end_time, 
+                         \(x, y) exportAudioExtract(x, y, aPathToFile = aPathToFile),
+                         .progress = TRUE
+      )
+    })
+    
+    print(noquote(paste0(length(list.files(outputFolder)), ' one-minute files have been created')))
+    
+    return(1)
+  }
 }
 
 computeMedianAcousticIndices <- function(inputDir = "data/interim/minute_files/") {
@@ -145,12 +197,26 @@ generateSummaryFromRecordings <- function(inputDir) {
   summaryAllFiles <- getDummyTibble()
   
   for(filename in recordings) {
-    generateOneMinFilesFromLongRecording(paste0(inputDir, filename))
+    exitCode <- generateOneMinFilesFromLongRecording(paste0(inputDir, filename))
     
-    medianAcousticIndices <- computeMedianAcousticIndices()
-    medianNDSI <- computeMedianNDSI()
+    if(is.null(exitCode)) {
+      
+      medianAcousticIndices <- tibble::tibble(acoustic_complexity = NA,
+                                              acoustic_diversity = NA,
+                                              acoustic_evenness = NA,
+                                              bioacoustic_index	= NA,
+                                              H = NA)
+ 
+      medianNDSI <- tibble::tibble(ndsi = NA)
+        
+    }
+    else {
+      medianAcousticIndices <- computeMedianAcousticIndices()
+      medianNDSI <- computeMedianNDSI()
+      
+      print(noquote(paste0("All indices have been computed for file ", filename)))
+    }
     
-    print(noquote(paste0("All indices have been computed for file ", filename)))
     
     summaryAcousticIndices <- filename |> 
       getFileInfoTibble() |>
