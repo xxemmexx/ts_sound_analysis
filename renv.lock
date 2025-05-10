@@ -61,6 +61,17 @@
       ],
       "Hash": "f27411eb6d9c3dada5edd444b8416675"
     },
+    "av": {
+      "Package": "av",
+      "Version": "0.9.4",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "graphics"
+      ],
+      "Hash": "ce6ae598e3c75c3fef8fcafa2d2f774c"
+    },
     "bit": {
       "Package": "bit",
       "Version": "4.0.5",
@@ -635,6 +646,17 @@
         "vctrs"
       ],
       "Hash": "a84e2cc86d07289b3b6f5069df7a004c"
+    },
+    "tictoc": {
+      "Package": "tictoc",
+      "Version": "1.2.1",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "R",
+        "methods"
+      ],
+      "Hash": "646895a33d57984ce7534249bd9adf64"
     },
     "tidyselect": {
       "Package": "tidyselect",
