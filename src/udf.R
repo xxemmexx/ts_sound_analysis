@@ -250,3 +250,14 @@ cleanUpInterimFiles <- function() {
   
   print(noquote("Intermediate outputs have been removed"))
 }
+
+shortenIndexName <- function(indexName) {
+  
+  dplyr::case_when(indexName == 'acoustic_complexity' ~ 'ACI',
+                   indexName == 'acoustic_diversity' ~ 'ADI',
+                   indexName == 'acoustic_evenness' ~ 'AEI',
+                   indexName == 'bioacoustic_index' ~ 'BIO',
+                   indexName == 'ndsi' ~ 'NDSI',
+                   .default = indexName
+  )
+}
