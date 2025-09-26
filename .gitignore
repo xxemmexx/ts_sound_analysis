@@ -8,3 +8,4 @@ src/make_interim_dataframes.R
 src/playground.R
 src/plot_it.R
 results/
+data/
