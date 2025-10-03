@@ -6,6 +6,7 @@ require(stringr)
 require(purrr)
 require(furrr)
 require(future)
+require(av)
 
 source('src/udf.R')
 
